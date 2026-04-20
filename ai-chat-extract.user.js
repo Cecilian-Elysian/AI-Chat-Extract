@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AI Chat Extract
 // @namespace    https://github.com/Cecilian-Elysian/AI-Chat-Extract
-// @version      0.0.3
+// @version      0.0.4
 // @description   定时摘取AI聊天记录并导出 (支持千问/OpenAI/Claude)
 // @author       Cecilian-Elysian
 // @match        *://*.qianwen.com/*
