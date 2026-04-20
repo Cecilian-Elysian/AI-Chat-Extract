@@ -506,40 +506,40 @@
         }
 
         openConfigPanel() {
-            const existing = document.getElementById('ai-chat-extract-panel');
+            const existing = document.getElementById('aice-panel-root');
             if (existing) { existing.remove(); return; }
 
             const panel = document.createElement('div');
-            panel.id = 'ai-chat-extract-panel';
+            panel.id = 'aice-panel-root';
             panel.innerHTML = `
                 <style>
-                    #ai-chat-extract-panel {
+                    #aice-extract-panel {
                         position: fixed; top: 0; right: 0; width: 360px; height: 100%;
                         background: #1a1a2e; color: #eee; z-index: 99999;
                         padding: 20px; overflow-y: auto; box-shadow: -4px 0 20px rgba(0,0,0,0.3);
                         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
                     }
-                    #ai-chat-extract-panel h2 { margin: 0 0 20px 0; font-size: 18px; color: #fff; }
-                    #ai-chat-extract-panel .form-group { margin-bottom: 15px; }
-                    #ai-chat-extract-panel label { display: block; margin-bottom: 6px; font-size: 13px; color: #aaa; }
-                    #ai-chat-extract-panel input[type="text"], #ai-chat-extract-panel input[type="password"],
-                    #ai-chat-extract-panel select { width: 100%; padding: 10px; border: 1px solid #333; border-radius: 6px;
+                    #aice-extract-panel h2 { margin: 0 0 20px 0; font-size: 18px; color: #fff; }
+                    #aice-extract-panel .form-group { margin-bottom: 15px; }
+                    #aice-extract-panel label { display: block; margin-bottom: 6px; font-size: 13px; color: #aaa; }
+                    #aice-extract-panel input[type="text"], #aice-extract-panel input[type="password"],
+                    #aice-extract-panel select { width: 100%; padding: 10px; border: 1px solid #333; border-radius: 6px;
                         background: #16213e; color: #fff; font-size: 14px; box-sizing: border-box; }
-                    #ai-chat-extract-panel input:focus { outline: none; border-color: #0f3460; }
-                    #ai-chat-extract-panel .checkbox-group { display: flex; align-items: center; gap: 8px; }
-                    #ai-chat-extract-panel .checkbox-group input { width: auto; }
-                    #ai-chat-extract-panel button {
+                    #aice-extract-panel input:focus { outline: none; border-color: #0f3460; }
+                    #aice-extract-panel .checkbox-group { display: flex; align-items: center; gap: 8px; }
+                    #aice-extract-panel .checkbox-group input { width: auto; }
+                    #aice-extract-panel button {
                         width: 100%; padding: 12px; border: none; border-radius: 6px; cursor: pointer;
                         font-size: 14px; margin-bottom: 10px; font-weight: 500; transition: opacity 0.2s;
                     }
-                    #ai-chat-extract-panel button:hover { opacity: 0.85; }
-                    #ai-chat-extract-panel .btn-save { background: #00d26a; color: #000; }
-                    #ai-chat-extract-panel .btn-run { background: #3b82f6; color: #fff; }
-                    #ai-chat-extract-panel .btn-close { background: #555; color: #fff; }
-                    #ai-chat-extract-panel .btn-fetch-cookie { background: #8b5cf6; color: #fff; font-size: 12px; padding: 8px; }
-                    #ai-chat-extract-panel .cookie-status { font-size: 11px; color: #888; margin-top: 4px; }
-                    #ai-chat-extract-panel .platform-section { background: #16213e; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
-                    #ai-chat-extract-panel .platform-title { font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #fff; }
+                    #aice-extract-panel button:hover { opacity: 0.85; }
+                    #aice-extract-panel .btn-save { background: #00d26a; color: #000; }
+                    #aice-extract-panel .btn-run { background: #3b82f6; color: #fff; }
+                    #aice-extract-panel .btn-close { background: #555; color: #fff; }
+                    #aice-extract-panel .btn-fetch-cookie { background: #8b5cf6; color: #fff; font-size: 12px; padding: 8px; }
+                    #aice-extract-panel .cookie-status { font-size: 11px; color: #888; margin-top: 4px; }
+                    #aice-extract-panel .platform-section { background: #16213e; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+                    #aice-extract-panel .platform-title { font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #fff; }
                 </style>
                 <h2>AI Chat Extract 配置</h2>
 
@@ -657,11 +657,11 @@
         }
 
         createFloatingWidget() {
-            const existing = document.getElementById('ai-chat-float-widget');
+            const existing = document.getElementById('aice-float-root');
             if (existing) { existing.remove(); return; }
 
             const widget = document.createElement('div');
-            widget.id = 'ai-chat-float-widget';
+            widget.id = 'aice-float-root';
 
             let isExpanded = false;
             let posX = 20, posY = 100;
@@ -669,48 +669,48 @@
 
             const collapsedHTML = `
                 <style>
-                    #ai-chat-float-widget {
+                    #aice-float-root {
                         position: fixed; z-index: 99998;
                         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
                         font-size: 12px;
                     }
-                    #ai-chat-float-toggle {
+                    #aice-float-toggle {
                         width: 40px; height: 40px; border-radius: 50%;
                         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                         color: #fff; border: none; cursor: pointer;
                         font-size: 18px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
                         display: flex; align-items: center; justify-content: center;
                     }
-                    #ai-chat-float-toggle:hover { transform: scale(1.05); }
-                    #ai-chat-float-panel {
+                    #aice-float-toggle:hover { transform: scale(1.05); }
+                    #aice-float-panel {
                         display: none; position: absolute; top: 50px; left: 0;
                         background: #1a1a2e; border-radius: 12px; padding: 15px;
                         box-shadow: 0 8px 30px rgba(0,0,0,0.3); min-width: 200px;
                         color: #eee;
                     }
-                    #ai-chat-float-panel.show { display: block; }
-                    #ai-chat-float-panel .float-row { margin-bottom: 12px; }
-                    #ai-chat-float-panel label { display: block; margin-bottom: 4px; font-size: 11px; color: #aaa; }
-                    #ai-chat-float-panel select, #ai-chat-float-panel input[type="number"] {
+                    #aice-float-panel.show { display: block; }
+                    #aice-float-panel .float-row { margin-bottom: 12px; }
+                    #aice-float-panel label { display: block; margin-bottom: 4px; font-size: 11px; color: #aaa; }
+                    #aice-float-panel select, #aice-float-panel input[type="number"] {
                         width: 100%; padding: 6px; border: 1px solid #333; border-radius: 4px;
                         background: #16213e; color: #fff; font-size: 12px;
                     }
-                    #ai-chat-float-panel .float-btn {
+                    #aice-float-panel .float-btn {
                         width: 100%; padding: 8px; border: none; border-radius: 6px;
                         cursor: pointer; font-size: 12px; margin-bottom: 6px;
                     }
-                    #ai-chat-float-panel .btn-run { background: #3b82f6; color: #fff; }
-                    #ai-chat-float-panel .btn-timer-on { background: #10b981; color: #fff; }
-                    #ai-chat-float-panel .btn-timer-off { background: #ef4444; color: #fff; }
-                    #ai-chat-float-panel .btn-cookie { background: #8b5cf6; color: #fff; }
-                    #ai-chat-float-panel .cookie-info { font-size: 10px; color: #666; margin-top: 4px; }
-                    #ai-chat-float-panel .status-bar {
+                    #aice-float-panel .btn-run { background: #3b82f6; color: #fff; }
+                    #aice-float-panel .btn-timer-on { background: #10b981; color: #fff; }
+                    #aice-float-panel .btn-timer-off { background: #ef4444; color: #fff; }
+                    #aice-float-panel .btn-cookie { background: #8b5cf6; color: #fff; }
+                    #aice-float-panel .cookie-info { font-size: 10px; color: #666; margin-top: 4px; }
+                    #aice-float-panel .status-bar {
                         padding: 6px; background: #16213e; border-radius: 4px;
                         font-size: 10px; color: #888; text-align: center;
                     }
                 </style>
-                <button id="ai-chat-float-toggle">📥</button>
-                <div id="ai-chat-float-panel">
+                <button id="aice-float-toggle">📥</button>
+                <div id="aice-float-panel">
                     <div class="float-row">
                         <label>间隔 (分钟)</label>
                         <input type="number" id="float-interval" value="60" min="1">
@@ -749,8 +749,8 @@
                 ? `已登录 (${Object.keys(savedCookies).length} cookies)`
                 : '未登录';
 
-            document.getElementById('ai-chat-float-toggle').onclick = () => {
-                const panel = document.getElementById('ai-chat-float-panel');
+            document.getElementById('aice-float-toggle').onclick = () => {
+                const panel = document.getElementById('aice-float-panel');
                 panel.classList.toggle('show');
             };
 
@@ -789,7 +789,7 @@
                     : '获取失败';
             };
 
-            const toggleBtn = document.getElementById('ai-chat-float-toggle');
+            const toggleBtn = document.getElementById('aice-float-toggle');
             toggleBtn.onmousedown = (e) => {
                 isDragging = true;
                 dragOffsetX = e.clientX - posX;
