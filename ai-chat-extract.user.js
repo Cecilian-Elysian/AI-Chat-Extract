@@ -5,9 +5,11 @@
 // @description   定时摘取AI聊天记录并导出 (支持千问/OpenAI/Claude)
 // @author       Cecilian-Elysian
 // @match        *://*.qianwen.com/*
+// @match        *://*.quark.cn/*
 // @match        *://qianwen.com/*
-// @include      *://*.qianwen.com/quarkchat*
-// @include      *://*.quark.cn/*
+// @match        *://quark.cn/*
+// @match        *://chat.openai.com/*
+// @match        *://claude.ai/*
 // @grant        GM_xmlhttpRequest
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -812,7 +814,13 @@
     GM_registerMenuCommand('AI Chat Extract - 启动定时', () => app.startScheduled());
     GM_registerMenuCommand('AI Chat Extract - 停止定时', () => app.stopScheduled());
 
-    app.createFloatingWidget();
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            app.createFloatingWidget();
+        });
+    } else {
+        app.createFloatingWidget();
+    }
 
     if (app.config.autoRunOnLoad && app.scheduler.shouldRun()) {
         setTimeout(() => app.runOnce(), 3000);
