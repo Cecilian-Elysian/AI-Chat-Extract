@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name         AI Chat Extract
 // @namespace    https://github.com/Cecilian-Elysian/AI-Chat-Extract
-// @version      0.0.2
+// @version      0.0.3
 // @description   定时摘取AI聊天记录并导出 (支持千问/OpenAI/Claude)
 // @author       Cecilian-Elysian
-// @match        *://chat.openai.com/*
-// @match        *://claude.ai/*
+// @match        *://*.qianwen.com/*
 // @match        *://qianwen.com/*
+// @include      *://*.qianwen.com/quarkchat*
+// @include      *://*.quark.cn/*
 // @grant        GM_xmlhttpRequest
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -15,6 +16,7 @@
 // @connect      api.openai.com
 // @connect      anthropic.com
 // @connect      qianwen.com
+// @connect      quark.cn
 // @noframes
 // ==/UserScript==
 
@@ -40,7 +42,7 @@
 
     class CookieManager {
         static getCookieDomain() {
-            return 'qianwen.com';
+            return window.location.hostname.includes('quark.cn') ? 'quark.cn' : 'qianwen.com';
         }
 
         static getAllCookies() {
@@ -55,21 +57,25 @@
 
         static getAuthToken() {
             const cookies = this.getAllCookies();
-            return cookies['aliyung残留'] || cookies['token'] || cookies['csrf'] || '';
+            return cookies['aliyung残留'] || cookies['token'] || cookies['csrf'] || cookies['QToken'] || '';
         }
 
         static async fetchCookie() {
             return new Promise((resolve) => {
                 const cookies = this.getAllCookies();
-                const token = cookies['aliyung残留'] || cookies['token'];
+                const token = cookies['aliyung残留'] || cookies['token'] || cookies['QToken'];
                 if (token) {
                     this.saveCookies(cookies);
                     resolve(cookies);
                     return;
                 }
+                const currentHost = window.location.hostname;
+                const targetUrl = currentHost.includes('quark.cn')
+                    ? `https://unite.quark.cn/page/chat`
+                    : 'https://qianwen.com/quarkchat';
                 GM_xmlhttpRequest({
                     method: 'GET',
-                    url: 'https://qianwen.com/quarkchat',
+                    url: targetUrl,
                     onload: (res) => {
                         const newCookies = this.getAllCookies();
                         this.saveCookies(newCookies);
@@ -168,20 +174,31 @@
             this.interceptor = new ApiInterceptor();
         }
 
+        getBaseUrl() {
+            return window.location.hostname.includes('quark.cn')
+                ? 'https://unite.quark.cn'
+                : 'https://qianwen.com';
+        }
+
         async fetchConversations() {
             const cookies = CookieManager.getSavedCookies() || await CookieManager.fetchCookie();
             const cookieHeader = CookieManager.buildCookieHeader(cookies);
-            const token = cookies['aliyung残留'] || cookies['token'];
+            const token = cookies['aliyung残留'] || cookies['token'] || cookies['QToken'];
 
             if (!token) {
                 console.error('[Qianwen] No auth token found');
                 return [];
             }
 
+            const baseUrl = this.getBaseUrl();
+            const listUrl = baseUrl.includes('quark.cn')
+                ? `${baseUrl}/pc/chat/conversation/list`
+                : `${baseUrl}/quarkchat/api/chat/list?type=conversation&page=1&pageSize=50`;
+
             return new Promise((resolve) => {
                 GM_xmlhttpRequest({
                     method: 'GET',
-                    url: 'https://qianwen.com/quarkchat/api/chat/list?type=conversation&page=1&pageSize=50',
+                    url: listUrl,
                     headers: {
                         'Cookie': cookieHeader,
                         'Authorization': `Bearer ${token}`,
@@ -218,12 +235,17 @@
             if (!cookies) return [];
 
             const cookieHeader = CookieManager.buildCookieHeader(cookies);
-            const token = cookies['aliyung残留'] || cookies['token'];
+            const token = cookies['aliyung残留'] || cookies['token'] || cookies['QToken'];
+
+            const baseUrl = this.getBaseUrl();
+            const msgUrl = baseUrl.includes('quark.cn')
+                ? `${baseUrl}/pc/chat/message/list?conversation_id=${conversationId}`
+                : `${baseUrl}/quarkchat/api/chat/messages?conversation_id=${conversationId}`;
 
             return new Promise((resolve) => {
                 GM_xmlhttpRequest({
                     method: 'GET',
-                    url: `https://qianwen.com/quarkchat/api/chat/messages?conversation_id=${conversationId}`,
+                    url: msgUrl,
                     headers: {
                         'Cookie': cookieHeader,
                         'Authorization': `Bearer ${token}`,
@@ -644,5 +666,5 @@
         setTimeout(() => app.runOnce(), 3000);
     }
 
-    console.log('AI Chat Extract 已加载 (v0.0.2)');
+    console.log('AI Chat Extract 已加载 (v0.0.3) - 支持夸克浏览器千问');
 })();
