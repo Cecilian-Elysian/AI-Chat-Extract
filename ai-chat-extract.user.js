@@ -653,14 +653,166 @@
                 panel.remove();
             };
         }
+
+        createFloatingWidget() {
+            const existing = document.getElementById('ai-chat-float-widget');
+            if (existing) { existing.remove(); return; }
+
+            const widget = document.createElement('div');
+            widget.id = 'ai-chat-float-widget';
+
+            let isExpanded = false;
+            let posX = 20, posY = 100;
+            let isDragging = false, dragOffsetX = 0, dragOffsetY = 0;
+
+            const collapsedHTML = `
+                <style>
+                    #ai-chat-float-widget {
+                        position: fixed; z-index: 99998;
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                        font-size: 12px;
+                    }
+                    #ai-chat-float-toggle {
+                        width: 40px; height: 40px; border-radius: 50%;
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        color: #fff; border: none; cursor: pointer;
+                        font-size: 18px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+                        display: flex; align-items: center; justify-content: center;
+                    }
+                    #ai-chat-float-toggle:hover { transform: scale(1.05); }
+                    #ai-chat-float-panel {
+                        display: none; position: absolute; top: 50px; left: 0;
+                        background: #1a1a2e; border-radius: 12px; padding: 15px;
+                        box-shadow: 0 8px 30px rgba(0,0,0,0.3); min-width: 200px;
+                        color: #eee;
+                    }
+                    #ai-chat-float-panel.show { display: block; }
+                    #ai-chat-float-panel .float-row { margin-bottom: 12px; }
+                    #ai-chat-float-panel label { display: block; margin-bottom: 4px; font-size: 11px; color: #aaa; }
+                    #ai-chat-float-panel select, #ai-chat-float-panel input[type="number"] {
+                        width: 100%; padding: 6px; border: 1px solid #333; border-radius: 4px;
+                        background: #16213e; color: #fff; font-size: 12px;
+                    }
+                    #ai-chat-float-panel .float-btn {
+                        width: 100%; padding: 8px; border: none; border-radius: 6px;
+                        cursor: pointer; font-size: 12px; margin-bottom: 6px;
+                    }
+                    #ai-chat-float-panel .btn-run { background: #3b82f6; color: #fff; }
+                    #ai-chat-float-panel .btn-timer-on { background: #10b981; color: #fff; }
+                    #ai-chat-float-panel .btn-timer-off { background: #ef4444; color: #fff; }
+                    #ai-chat-float-panel .btn-cookie { background: #8b5cf6; color: #fff; }
+                    #ai-chat-float-panel .cookie-info { font-size: 10px; color: #666; margin-top: 4px; }
+                    #ai-chat-float-panel .status-bar {
+                        padding: 6px; background: #16213e; border-radius: 4px;
+                        font-size: 10px; color: #888; text-align: center;
+                    }
+                </style>
+                <button id="ai-chat-float-toggle">📥</button>
+                <div id="ai-chat-float-panel">
+                    <div class="float-row">
+                        <label>间隔 (分钟)</label>
+                        <input type="number" id="float-interval" value="60" min="1">
+                    </div>
+                    <div class="float-row">
+                        <label>导出格式</label>
+                        <select id="float-format">
+                            <option value="md">Markdown</option>
+                            <option value="json">JSON</option>
+                            <option value="csv">CSV</option>
+                        </select>
+                    </div>
+                    <div class="float-row">
+                        <button class="float-btn btn-run" id="float-run">▶ 立即导出</button>
+                        <button class="float-btn btn-timer-on" id="float-timer-on">⏰ 启动定时</button>
+                        <button class="float-btn btn-timer-off" id="float-timer-off" style="display:none">⏹ 停止定时</button>
+                        <button class="float-btn btn-cookie" id="float-cookie">🍪 获取Cookie</button>
+                    </div>
+                    <div class="cookie-info" id="float-cookie-info">未获取</div>
+                    <div class="status-bar" id="float-status">就绪</div>
+                </div>
+            `;
+
+            widget.innerHTML = collapsedHTML;
+            document.body.appendChild(widget);
+
+            widget.style.left = posX + 'px';
+            widget.style.top = posY + 'px';
+
+            const config = this.loadConfig();
+            const savedCookies = CookieManager.getSavedCookies();
+
+            document.getElementById('float-interval').value = config.intervalMinutes || 60;
+            document.getElementById('float-format').value = config.exportFormat || 'md';
+            document.getElementById('float-cookie-info').textContent = savedCookies
+                ? `已登录 (${Object.keys(savedCookies).length} cookies)`
+                : '未登录';
+
+            document.getElementById('ai-chat-float-toggle').onclick = () => {
+                const panel = document.getElementById('ai-chat-float-panel');
+                panel.classList.toggle('show');
+            };
+
+            document.getElementById('float-run').onclick = () => {
+                const interval = parseInt(document.getElementById('float-interval').value) || 60;
+                const format = document.getElementById('float-format').value;
+                this.saveConfig({ ...this.loadConfig(), intervalMinutes: interval, exportFormat: format });
+                this.runOnce();
+                document.getElementById('float-status').textContent = '导出中...';
+                setTimeout(() => { document.getElementById('float-status').textContent = '导出完成'; }, 2000);
+            };
+
+            document.getElementById('float-timer-on').onclick = () => {
+                const interval = parseInt(document.getElementById('float-interval').value) || 60;
+                const format = document.getElementById('float-format').value;
+                this.saveConfig({ ...this.loadConfig(), intervalMinutes: interval, exportFormat: format });
+                this.startScheduled();
+                document.getElementById('float-timer-on').style.display = 'none';
+                document.getElementById('float-timer-off').style.display = 'block';
+                document.getElementById('float-status').textContent = `定时中 (${interval}min)`;
+            };
+
+            document.getElementById('float-timer-off').onclick = () => {
+                this.stopScheduled();
+                document.getElementById('float-timer-on').style.display = 'block';
+                document.getElementById('float-timer-off').style.display = 'none';
+                document.getElementById('float-status').textContent = '已停止';
+            };
+
+            document.getElementById('float-cookie').onclick = async () => {
+                document.getElementById('float-cookie-info').textContent = '获取中...';
+                await CookieManager.fetchCookie();
+                const cookies = CookieManager.getSavedCookies();
+                document.getElementById('float-cookie-info').textContent = cookies
+                    ? `已登录 (${Object.keys(cookies).length} cookies)`
+                    : '获取失败';
+            };
+
+            const toggleBtn = document.getElementById('ai-chat-float-toggle');
+            toggleBtn.onmousedown = (e) => {
+                isDragging = true;
+                dragOffsetX = e.clientX - posX;
+                dragOffsetY = e.clientY - posY;
+            };
+            document.onmousemove = (e) => {
+                if (!isDragging) return;
+                posX = e.clientX - dragOffsetX;
+                posY = e.clientY - dragOffsetY;
+                widget.style.left = posX + 'px';
+                widget.style.top = posY + 'px';
+            };
+            document.onmouseup = () => { isDragging = false; };
+        }
     }
 
     const app = new App();
 
     GM_registerMenuCommand('AI Chat Extract - 配置面板', () => app.openConfigPanel());
+    GM_registerMenuCommand('AI Chat Extract - 悬浮窗', () => app.createFloatingWidget());
     GM_registerMenuCommand('AI Chat Extract - 立即导出', () => app.runOnce());
     GM_registerMenuCommand('AI Chat Extract - 启动定时', () => app.startScheduled());
     GM_registerMenuCommand('AI Chat Extract - 停止定时', () => app.stopScheduled());
+
+    app.createFloatingWidget();
 
     if (app.config.autoRunOnLoad && app.scheduler.shouldRun()) {
         setTimeout(() => app.runOnce(), 3000);
