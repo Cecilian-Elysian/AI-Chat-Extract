@@ -297,13 +297,33 @@
 
     function createUI() {
         GM_addStyle(`
+            .aice-toggle {
+                position: fixed; bottom: 20px; right: 20px; width: 50px; height: 50px;
+                background: linear-gradient(135deg, #667eea, #764ba2); color: #fff;
+                border: none; border-radius: 50%; cursor: pointer; z-index: 99998;
+                font-size: 20px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+                transition: transform 0.2s, box-shadow 0.2s;
+            }
+            .aice-toggle:hover {
+                transform: scale(1.1);
+                box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+            }
+            .aice-overlay {
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.5); z-index: 99997; opacity: 0;
+                visibility: hidden; transition: opacity 0.3s, visibility 0.3s;
+            }
+            .aice-overlay.active { opacity: 1; visibility: visible; }
             .aice-panel {
-                position: fixed; top: 0; right: 0; width: 280px; height: 100%;
+                position: fixed; top: 0; right: -320px; width: 300px; height: 100%;
                 background: #1a1a2e; color: #eee; z-index: 99999;
                 padding: 20px; font-family: -apple-system, sans-serif;
                 box-shadow: -4px 0 20px rgba(0,0,0,0.3);
+                transition: right 0.3s ease;
             }
-            .aice-panel h2 { margin: 0 0 20px; color: #fff; font-size: 16px; }
+            .aice-panel.open { right: 0; }
+            .aice-panel h2 { margin: 0 0 20px; color: #fff; font-size: 16px; display: flex; justify-content: space-between; align-items: center; }
+            .aice-close { background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; padding: 0; width: 30px; height: 30px; }
             .aice-panel .row { margin-bottom: 15px; }
             .aice-panel label { display: block; margin-bottom: 5px; font-size: 12px; color: #aaa; }
             .aice-panel select, .aice-panel input { width: 100%; padding: 8px; border: 1px solid #333; border-radius: 4px; background: #16213e; color: #fff; font-size: 13px; box-sizing: border-box; }
@@ -314,14 +334,19 @@
             .aice-panel .btn-primary { background: #667eea; color: #fff; }
             .aice-panel .btn-secondary { background: #3b82f6; color: #fff; }
             .aice-panel .btn-cookie { background: #8b5cf6; color: #fff; }
+            .aice-panel .btn-export { background: #10b981; color: #fff; }
             .aice-panel .info { font-size: 11px; color: #888; margin-top: 4px; min-height: 40px; overflow: hidden; word-break: break-all; }
             .aice-panel .status { padding: 8px; background: #16213e; border-radius: 4px; font-size: 12px; color: #10b981; text-align: center; margin-top: 15px; }
         `);
 
+        const overlay = document.createElement('div');
+        overlay.className = 'aice-overlay';
+        document.body.appendChild(overlay);
+
         const panel = document.createElement('div');
         panel.className = 'aice-panel';
         panel.innerHTML = `
-            <h2>📥 AI Chat Extract</h2>
+            <h2><span>📥 AI Chat Extract</span><button class="aice-close">&times;</button></h2>
             <div class="row">
                 <label>导出格式</label>
                 <select id="aice-format">
@@ -340,10 +365,38 @@
             </div>
             <button class="btn-primary" id="aice-run">▶ 立即导出</button>
             <button class="btn-secondary" id="aice-auto">⏰ 启动定时</button>
-            <button class="btn-primary" id="aice-auto-extract" style="background:#10b981">🚀 一键导出</button>
+            <button class="btn-export" id="aice-auto-extract">🚀 一键导出</button>
             <div class="status" id="aice-status">就绪</div>
         `;
         document.body.appendChild(panel);
+
+        const toggleBtn = document.createElement('button');
+        toggleBtn.className = 'aice-toggle';
+        toggleBtn.textContent = '📥';
+        toggleBtn.title = 'AI Chat Extract';
+        document.body.appendChild(toggleBtn);
+
+        function openPanel() {
+            panel.classList.add('open');
+            overlay.classList.add('active');
+        }
+
+        function closePanel() {
+            panel.classList.remove('open');
+            overlay.classList.remove('active');
+        }
+
+        toggleBtn.onclick = () => {
+            if (panel.classList.contains('open')) {
+                closePanel();
+            } else {
+                openPanel();
+            }
+        };
+
+        overlay.onclick = closePanel;
+
+        panel.querySelector('.aice-close').onclick = closePanel;
 
         const config = loadConfig();
         const cookies = getCookies();
