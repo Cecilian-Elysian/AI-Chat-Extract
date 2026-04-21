@@ -38,12 +38,17 @@
         GM_setValue(CONFIG_KEY, config);
     }
 
-    function getCookies() {
-        return GM_getValue(COOKIE_KEY, null);
+    function saveCookies(cookies) {
+        GM_setValue(COOKIE_KEY, { cookies, time: Date.now(), expires: Date.now() + 24 * 60 * 60 * 1000 });
     }
 
-    function saveCookies(cookies) {
-        GM_setValue(COOKIE_KEY, { cookies, time: Date.now() });
+    function getCookies() {
+        const stored = GM_getValue(COOKIE_KEY, null);
+        if (stored && stored.expires && Date.now() > stored.expires) {
+            GM_setValue(COOKIE_KEY, null);
+            return null;
+        }
+        return stored;
     }
 
     function getAllPageCookies() {
@@ -100,9 +105,9 @@
                 },
                 onload: (res) => {
                     try { resolve(JSON.parse(res.responseText)); }
-                    catch { resolve(null); }
+                    catch (e) { resolve({ error: 'JSON parse failed', detail: e.message, response: res.responseText.substring(0, 200) }); }
                 },
-                onerror: reject
+                onerror: (err) => reject(new Error('Request failed: ' + err.status))
             });
         });
     }
@@ -243,7 +248,6 @@
                     a.href = url;
                     a.download = filename;
                     a.click();
-                    URL.revokeObjectURL(url);
                 }
             });
         } else {
@@ -337,6 +341,53 @@
             .aice-panel .btn-export { background: #10b981; color: #fff; }
             .aice-panel .info { font-size: 11px; color: #888; margin-top: 4px; min-height: 40px; overflow: hidden; word-break: break-all; }
             .aice-panel .status { padding: 8px; background: #16213e; border-radius: 4px; font-size: 12px; color: #10b981; text-align: center; margin-top: 15px; }
+            .aice-miniball {
+                position: fixed; width: 44px; height: 44px;
+                background: linear-gradient(135deg, #667eea, #764ba2);
+                border-radius: 50%; cursor: pointer; z-index: 99996;
+                box-shadow: 0 4px 15px rgba(102, 126, 234, 0.5);
+                display: flex; align-items: center; justify-content: center;
+                font-size: 18px; color: #fff; user-select: none;
+                transition: transform 0.3s, box-shadow 0.3s;
+                animation: aice-pulse 2s infinite;
+            }
+            .aice-miniball:hover {
+                transform: scale(1.15);
+                box-shadow: 0 6px 25px rgba(102, 126, 234, 0.7);
+            }
+            .aice-miniball.dragging {
+                animation: none; cursor: grabbing;
+                transform: scale(1.2);
+            }
+            .aice-miniball-menu {
+                position: fixed; min-width: 160px;
+                background: #1a1a2e; border-radius: 12px;
+                box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+                z-index: 99995; padding: 8px 0;
+                opacity: 0; visibility: hidden;
+                transform: scale(0.8) translateY(10px);
+                transition: opacity 0.25s, transform 0.25s, visibility 0.25s;
+            }
+            .aice-miniball-menu.show {
+                opacity: 1; visibility: visible;
+                transform: scale(1) translateY(0);
+            }
+            .aice-miniball-menu item {
+                display: flex; align-items: center; gap: 10px;
+                padding: 10px 16px; color: #eee; font-size: 13px;
+                cursor: pointer; transition: background 0.15s;
+            }
+            .aice-miniball-menu item:hover {
+                background: rgba(102, 126, 234, 0.2);
+            }
+            .aice-miniball-menu item .icon { font-size: 16px; width: 20px; text-align: center; }
+            .aice-miniball-menu .divider {
+                height: 1px; background: #333; margin: 4px 0;
+            }
+            @keyframes aice-pulse {
+                0%, 100% { box-shadow: 0 4px 15px rgba(102, 126, 234, 0.5); }
+                50% { box-shadow: 0 4px 25px rgba(102, 126, 234, 0.8), 0 0 40px rgba(102, 126, 234, 0.3); }
+            }
         `);
 
         const overlay = document.createElement('div');
@@ -397,6 +448,101 @@
         overlay.onclick = closePanel;
 
         panel.querySelector('.aice-close').onclick = closePanel;
+
+        const miniball = document.createElement('div');
+        miniball.className = 'aice-miniball';
+        miniball.textContent = '🤖';
+        miniball.title = 'AI Chat Extract - Mini';
+        document.body.appendChild(miniball);
+
+        const miniballMenu = document.createElement('div');
+        miniballMenu.className = 'aice-miniball-menu';
+        miniballMenu.innerHTML = `
+            <item data-action="export"><span class="icon">📤</span>立即导出</item>
+            <item data-action="auto"><span class="icon">⏰</span>定时导出</item>
+            <item data-action="cookie"><span class="icon">🍪</span>获取Cookie</item>
+            <div class="divider"></div>
+            <item data-action="panel"><span class="icon">⚙️</span>打开设置</item>
+        `;
+        document.body.appendChild(miniballMenu);
+
+        let miniballX = window.innerWidth - 70;
+        let miniballY = window.innerHeight - 120;
+        let isDragging = false;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+
+        function updateMiniballPosition() {
+            miniball.style.right = (window.innerWidth - miniballX - 44) + 'px';
+            miniball.style.top = miniballY + 'px';
+            miniball.style.left = 'auto';
+            miniballMenu.style.right = (window.innerWidth - miniballX - 44) + 'px';
+            miniballMenu.style.top = (miniballY + 50) + 'px';
+            miniballMenu.style.left = 'auto';
+        }
+
+        updateMiniballPosition();
+
+        miniball.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            miniball.classList.add('dragging');
+            dragOffsetX = e.clientX - miniballX;
+            dragOffsetY = e.clientY - miniballY;
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            miniballX = e.clientX - dragOffsetX;
+            miniballY = e.clientY - dragOffsetY;
+            miniballX = Math.max(0, Math.min(miniballX, window.innerWidth - 44));
+            miniballY = Math.max(0, Math.min(miniballY, window.innerHeight - 44));
+            updateMiniballPosition();
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                miniball.classList.remove('dragging');
+            }
+        });
+
+        function hideMiniballMenu() {
+            miniballMenu.classList.remove('show');
+        }
+
+        miniball.addEventListener('click', (e) => {
+            if (isDragging) return;
+            e.stopPropagation();
+            if (miniballMenu.classList.contains('show')) {
+                hideMiniballMenu();
+            } else {
+                updateMiniballPosition();
+                miniballMenu.classList.add('show');
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!miniballMenu.contains(e.target) && e.target !== miniball) {
+                hideMiniballMenu();
+            }
+        });
+
+        miniballMenu.querySelectorAll('item').forEach(item => {
+            item.addEventListener('click', () => {
+                const action = item.dataset.action;
+                hideMiniballMenu();
+                if (action === 'panel') {
+                    openPanel();
+                } else if (action === 'export') {
+                    document.getElementById('aice-run').click();
+                } else if (action === 'auto') {
+                    document.getElementById('aice-auto').click();
+                } else if (action === 'cookie') {
+                    document.getElementById('aice-get-cookie').click();
+                }
+            });
+        });
 
         const config = loadConfig();
         const cookies = getCookies();
@@ -502,6 +648,9 @@
 
                     if (visitedTitles.has(title)) {
                         console.log('[AICE] Skipping duplicate:', title);
+                        if (i < convItems.length - 1) {
+                            await new Promise(r => setTimeout(r, 300));
+                        }
                         continue;
                     }
                     visitedTitles.add(title);
@@ -556,5 +705,5 @@
         createUI();
     }
 
-    console.log('[AICE] AI Chat Extract v1.0.1 loaded');
+    console.log('[AICE] AI Chat Extract v1.0.2 loaded');
 })();
