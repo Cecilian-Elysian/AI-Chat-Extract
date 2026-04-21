@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AI Chat Extract
 // @namespace    https://github.com/Cecilian-Elysian/AI-Chat-Extract
-// @version      0.0.4
+// @version      0.0.5
 // @description   定时摘取AI聊天记录并导出 (支持千问/OpenAI/Claude)
 // @author       Cecilian-Elysian
 // @match        *://*.qianwen.com/*
@@ -808,12 +808,6 @@
 
     const app = new App();
 
-    GM_registerMenuCommand('AI Chat Extract - 配置面板', () => app.openConfigPanel());
-    GM_registerMenuCommand('AI Chat Extract - 悬浮窗', () => app.createFloatingWidget());
-    GM_registerMenuCommand('AI Chat Extract - 立即导出', () => app.runOnce());
-    GM_registerMenuCommand('AI Chat Extract - 启动定时', () => app.startScheduled());
-    GM_registerMenuCommand('AI Chat Extract - 停止定时', () => app.stopScheduled());
-
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             app.createFloatingWidget();
@@ -826,5 +820,5 @@
         setTimeout(() => app.runOnce(), 3000);
     }
 
-    console.log('AI Chat Extract 已加载 (v0.0.3) - 支持夸克浏览器千问');
+    console.log('AI Chat Extract 已加载 (v0.0.5) - 支持夸克浏览器千问');
 })();
