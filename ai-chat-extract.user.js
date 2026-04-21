@@ -314,7 +314,7 @@
             .aice-panel .btn-primary { background: #667eea; color: #fff; }
             .aice-panel .btn-secondary { background: #3b82f6; color: #fff; }
             .aice-panel .btn-cookie { background: #8b5cf6; color: #fff; }
-            .aice-panel .info { font-size: 11px; color: #888; margin-top: 4px; }
+            .aice-panel .info { font-size: 11px; color: #888; margin-top: 4px; min-height: 40px; overflow: hidden; word-break: break-all; }
             .aice-panel .status { padding: 8px; background: #16213e; border-radius: 4px; font-size: 12px; color: #10b981; text-align: center; margin-top: 15px; }
         `);
 
@@ -340,6 +340,8 @@
             </div>
             <button class="btn-primary" id="aice-run">▶ 立即导出</button>
             <button class="btn-secondary" id="aice-auto">⏰ 启动定时</button>
+            <button class="btn-secondary" id="aice-detect" style="background:#f59e0b">🔍 探测DOM</button>
+            <button class="btn-primary" id="aice-auto-extract" style="background:#10b981">🚀 一键导出</button>
             <div class="status" id="aice-status">就绪</div>
         `;
         document.body.appendChild(panel);
@@ -378,6 +380,193 @@
             document.getElementById('aice-status').textContent = '定时中 (' + interval + 'min)';
             runOnce();
             timerId = setInterval(runOnce, interval * 60 * 1000);
+        };
+
+        const detectors = [
+            // 通用对话列表选择器
+            { name: '.conversation-item', type: 'conversation' },
+            { name: '.chat-item', type: 'conversation' },
+            { name: '.sidebar-item', type: 'conversation' },
+            { name: '[class*="conversation"]', type: 'conversation' },
+            { name: '[class*="chat-list"]', type: 'conversation' },
+            { name: '[class*="session"]', type: 'conversation' },
+            { name: 'ul li', type: 'conversation' },
+            // 消息选择器
+            { name: '.message', type: 'message' },
+            { name: '.chat-message', type: 'message' },
+            { name: '[class*="message"]', type: 'message' },
+            { name: '[class*="chat-bubble"]', type: 'message' },
+            // 内容选择器
+            { name: '.content', type: 'content' },
+            { name: '.text', type: 'content' },
+            { name: 'p', type: 'content' }
+        ];
+
+        function detectDOM() {
+            const result = { conversations: [], messages: [], raw: '' };
+            const seenConv = new Set();
+            const seenMsg = new Set();
+
+            detectors.forEach(({ name, type }) => {
+                try {
+                    const els = document.querySelectorAll(name);
+                    if (!els.length) return;
+
+                    els.forEach(el => {
+                        const text = (el.textContent || '').trim().substring(0, 100);
+                        const info = `选择器: ${name} | 类型: ${type} | 文本: ${text}`;
+
+                        if (type === 'conversation' && !seenConv.has(el)) {
+                            seenConv.add(el);
+                            result.conversations.push(info);
+                        } else if (type === 'message' && !seenMsg.has(el)) {
+                            seenMsg.add(el);
+                            result.messages.push(info);
+                        }
+                    });
+                } catch (e) {}
+            });
+
+            result.raw = `=== DOM 探测结果 ===\n\n对话列表 (${result.conversations.length}个):\n${result.conversations.slice(0, 20).join('\n')}\n\n消息 (${result.messages.length}个):\n${result.messages.slice(0, 20).join('\n')}`;
+
+            return result;
+        }
+
+        document.getElementById('aice-detect').onclick = async () => {
+            const statusEl = document.getElementById('aice-status');
+            const infoEl = document.getElementById('aice-cookie-info');
+            statusEl.textContent = '探测中...';
+            infoEl.textContent = '请稍候';
+
+            setTimeout(() => {
+                const detectResult = detectDOM();
+                const output = detectResult.raw;
+
+                let blob = new Blob([output], { type: 'text/plain' });
+                let url = URL.createObjectURL(blob);
+                let a = document.createElement('a');
+                a.href = url;
+                a.download = 'aice_detect_' + Date.now() + '.txt';
+                a.click();
+                URL.revokeObjectURL(url);
+
+                navigator.clipboard && navigator.clipboard.writeText(output).catch(() => {});
+
+                statusEl.textContent = '已保存到文件';
+                infoEl.textContent = `找到 ${detectResult.conversations.length} 个对话, ${detectResult.messages.length} 条消息`;
+
+                console.log('[AICE] 探测结果:\n' + output);
+            }, 500);
+        };
+
+        async function autoExtract() {
+            const statusEl = document.getElementById('aice-status');
+            const infoEl = document.getElementById('aice-cookie-info');
+
+            statusEl.textContent = '查找对话列表...';
+            infoEl.textContent = '初始化';
+
+            const conversationSelectors = [
+                '[class*="conversation-item"]', '[class*="chat-item"]',
+                '[class*="session-item"]', '.sidebar-item', '[class*="chat-list"] li',
+                'ul li', '[data-conversation-id]'
+            ];
+
+            let convItems = [];
+            for (const sel of conversationSelectors) {
+                try {
+                    const els = document.querySelectorAll(sel);
+                    if (els.length > 0) {
+                        convItems = Array.from(els);
+                        console.log('[AICE] Found conversations with:', sel, els.length);
+                        break;
+                    }
+                } catch (e) {}
+            }
+
+            if (!convItems.length) {
+                statusEl.textContent = '未找到对话列表';
+                infoEl.textContent = '请确保在对话页面';
+                return;
+            }
+
+            const messageSelectors = [
+                '[class*="message"]', '[class*="chat-bubble"]',
+                '[class*="bubble"]', '[class*="content"]', '.text'
+            ];
+
+            let msgContainer = null;
+            for (const sel of messageSelectors) {
+                try {
+                    const el = document.querySelector(sel);
+                    if (el) {
+                        msgContainer = sel;
+                        console.log('[AICE] Message container:', sel);
+                        break;
+                    }
+                } catch (e) {}
+            }
+
+            statusEl.textContent = `发现 ${convItems.length} 个对话`;
+            infoEl.textContent = '开始导出...';
+
+            const sessions = [];
+            const visitedUrls = new Set();
+            let currentUrl = window.location.href;
+
+            for (let i = 0; i < Math.min(convItems.length, 100); i++) {
+                statusEl.textContent = `导出中 ${i + 1}/${convItems.length}`;
+                infoEl.textContent = convItems[i].textContent?.trim().substring(0, 30) || '对话 ' + (i + 1);
+
+                try {
+                    convItems[i].click();
+                    await new Promise(r => setTimeout(r, 1500));
+
+                    let title = document.title || '对话 ' + (i + 1);
+                    const titleEl = document.querySelector('[class*="title"]') || document.querySelector('h1');
+                    if (titleEl) title = titleEl.textContent?.trim() || title;
+
+                    const messages = [];
+                    for (const sel of messageSelectors) {
+                        const els = document.querySelectorAll(sel);
+                        els.forEach(el => {
+                            const text = (el.textContent || '').trim();
+                            if (text.length > 5) {
+                                const isUser = el.closest('[class*="user"]') || el.querySelector('[class*="user"]');
+                                messages.push({
+                                    role: isUser ? 'user' : 'assistant',
+                                    content: text,
+                                    timestamp: ''
+                                });
+                            }
+                        });
+                    }
+
+                    if (messages.length > 0) {
+                        sessions.push({
+                            sessionId: 'conv_' + i,
+                            platform: window.location.hostname.includes('quark') ? 'quark' : 'qianwen',
+                            title: title,
+                            created_at: '',
+                            messages: messages
+                        });
+                    }
+                } catch (e) {
+                    console.log('[AICE] Error on item', i, e);
+                }
+
+                if (i < convItems.length - 1) {
+                    await new Promise(r => setTimeout(r, 800));
+                }
+            }
+
+            infoEl.textContent = `共 ${sessions.length} 个对话`;
+            exportSessions(sessions);
+            statusEl.textContent = '导出完成';
+        }
+
+        document.getElementById('aice-auto-extract').onclick = () => {
+            autoExtract();
         };
     }
 
