@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AI Chat Extract
 // @namespace    https://github.com/Cecilian-Elysian/AI-Chat-Extract
-// @version      0.0.5
+// @version      0.0.6
 // @description   定时摘取AI聊天记录并导出 (支持千问/OpenAI/Claude)
 // @author       Cecilian-Elysian
 // @match        *://*.qianwen.com/*
@@ -475,9 +475,17 @@
                     mimeType = 'application/json;charset=utf-8';
                 }
 
-                const blob = new Blob([content], { type: mimeType });
+                const blob = new Blob(["\uFEFF" + content], { type: mimeType });
                 const url = URL.createObjectURL(blob);
-                GM_download({ url, name: filename, saveAs: true });
+
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
             }
 
             return sessions.length;
