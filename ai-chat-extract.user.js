@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AI Chat Extract
 // @namespace    https://github.com/Cecilian-Elysian/AI-Chat-Extract
-// @version      0.0.6
+// @version      0.0.7
 // @description   定时摘取AI聊天记录并导出 (支持千问/OpenAI/Claude)
 // @author       Cecilian-Elysian
 // @match        *://*.qianwen.com/*
@@ -475,24 +475,45 @@
                     mimeType = 'application/json;charset=utf-8';
                 }
 
-                const blob = new Blob(["\uFEFF" + content], { type: mimeType });
-                const url = URL.createObjectURL(blob);
+                console.log('[AI Chat Extract] Starting download, content length:', content.length);
 
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = filename;
-                a.style.display = 'none';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
+                const blob = new Blob(["\uFEFF" + content], { type: mimeType });
+
+                if (typeof GM_download !== 'undefined') {
+                    const url = URL.createObjectURL(blob);
+                    GM_download({
+                        url: url,
+                        name: filename,
+                        saveAs: true,
+                        onload: () => {
+                            console.log('[AI Chat Extract] Download started');
+                            URL.revokeObjectURL(url);
+                        },
+                        onerror: (e) => {
+                            console.error('[AI Chat Extract] Download failed:', e);
+                        }
+                    });
+                } else {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    a.style.display = 'none';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    setTimeout(() => URL.revokeObjectURL(url), 1000);
+                    console.log('[AI Chat Extract] Native download triggered');
+                }
             }
 
             return sessions.length;
         }
 
         async runOnce() {
+            console.log('[AI Chat Extract] runOnce called');
             const sessions = await this.runExtract();
+            console.log('[AI Chat Extract] Extracted sessions:', sessions.length);
             const count = this.exportSessions(sessions);
             this.scheduler.markRun();
             console.log(`[AI Chat Extract] Exported ${count} sessions`);
