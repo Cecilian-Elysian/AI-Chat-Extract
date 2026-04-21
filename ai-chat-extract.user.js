@@ -506,10 +506,6 @@
                     }
                     visitedTitles.add(title);
 
-                    let title = document.title || '对话 ' + (i + 1);
-                    const titleEl = document.querySelector('[class*="title"]') || document.querySelector('h1');
-                    if (titleEl) title = titleEl.textContent?.trim() || title;
-
                     const messages = [];
                     for (const sel of messageSelectors) {
                         const els = document.querySelectorAll(sel);
@@ -560,5 +556,5 @@
         createUI();
     }
 
-    console.log('[AICE] AI Chat Extract v1.0.0 loaded');
+    console.log('[AICE] AI Chat Extract v1.0.1 loaded');
 })();
