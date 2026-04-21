@@ -116,17 +116,31 @@
     async function fetchConversations() {
         let cookies = getCookies();
         if (!cookies || !cookies.cookies) {
+            console.log('[AICE] No cookies, fetching...');
             cookies = { cookies: await fetchCookies() };
         }
 
         const baseUrl = getBaseUrl();
+        console.log('[AICE] Base URL:', baseUrl);
+        console.log('[AICE] Cookies keys:', cookies.cookies ? Object.keys(cookies.cookies).slice(0, 5) : 'none');
+
+        const token = cookies.cookies['aliyung残留'] || cookies.cookies['token'] || cookies.cookies['QToken'];
+        console.log('[AICE] Token found:', token ? 'yes (' + token.substring(0, 20) + '...)' : 'no');
+
         const listUrl = baseUrl.includes('quark.cn')
             ? baseUrl + '/pc/chat/conversation/list'
             : baseUrl + '/quarkchat/api/chat/list?type=conversation&page=1&pageSize=50';
 
+        console.log('[AICE] Fetching:', listUrl);
+
         const data = await httpRequest(listUrl, cookies.cookies);
-        if (!data || !data.data || !Array.isArray(data.data)) {
-            console.log('[AICE] No conversations found');
+        console.log('[AICE] Response:', data);
+        if (!data) {
+            console.log('[AICE] No data received');
+            return [];
+        }
+        if (!data.data || !Array.isArray(data.data)) {
+            console.log('[AICE] Invalid data format:', JSON.stringify(data).substring(0, 200));
             return [];
         }
 
@@ -347,17 +361,8 @@
             const interval = parseInt(document.getElementById('aice-interval').value) || 60;
             saveConfig({ ...loadConfig(), exportFormat: format, intervalMinutes: interval });
             document.getElementById('aice-status').textContent = '导出中...';
-            testDownload();
+            await runOnce();
         };
-
-        function testDownload() {
-            const testContent = 'Hello, this is a test download at ' + new Date().toLocaleString();
-            const blob = new Blob([testContent], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            console.log('[AICE] Testing download with GM_download:', typeof GM_download !== 'undefined');
-            GM_download({ url: url, name: 'test_' + Date.now() + '.txt', saveAs: true });
-            setTimeout(() => URL.revokeObjectURL(url), 3000);
-        }
 
         let timerId = null;
         document.getElementById('aice-auto').onclick = () => {
