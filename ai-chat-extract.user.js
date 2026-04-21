@@ -214,23 +214,37 @@
         const blob = new Blob(['\uFEFF' + content], { type: mimeType });
         const url = URL.createObjectURL(blob);
 
-        GM_download({
-            url: url,
-            name: filename,
-            saveAs: true,
-            onload: () => {
-                URL.revokeObjectURL(url);
-                console.log('[AICE] Download success:', filename);
-            },
-            onerror: (e) => {
-                console.error('[AICE] Download failed:', e);
-            }
-        });
+        if (typeof GM_download !== 'undefined') {
+            GM_download({
+                url: url,
+                name: filename,
+                saveAs: true,
+                onload: () => {
+                    URL.revokeObjectURL(url);
+                    console.log('[AICE] Download success');
+                },
+                onerror: () => {
+                    console.log('[AICE] Download failed, trying native');
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                }
+            });
+        } else {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
     }
 
     function exportSessions(sessions) {
         if (!sessions.length) {
             console.log('[AICE] No sessions to export');
+            document.getElementById('aice-status').textContent = '无对话可导出';
             return;
         }
 
@@ -252,8 +266,12 @@
             mimeType = 'text/plain';
         }
 
-        console.log('[AICE] Exporting', sessions.length, 'sessions as', config.exportFormat);
+        console.log('[AICE] Content length:', content.length);
+        console.log('[AICE] Filename:', filename);
+        console.log('[AICE] GM_download available:', typeof GM_download !== 'undefined');
+
         download(content, filename, mimeType);
+        document.getElementById('aice-status').textContent = '已触发下载';
     }
 
     async function runOnce() {
@@ -329,9 +347,17 @@
             const interval = parseInt(document.getElementById('aice-interval').value) || 60;
             saveConfig({ ...loadConfig(), exportFormat: format, intervalMinutes: interval });
             document.getElementById('aice-status').textContent = '导出中...';
-            await runOnce();
-            document.getElementById('aice-status').textContent = '导出完成';
+            testDownload();
         };
+
+        function testDownload() {
+            const testContent = 'Hello, this is a test download at ' + new Date().toLocaleString();
+            const blob = new Blob([testContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            console.log('[AICE] Testing download with GM_download:', typeof GM_download !== 'undefined');
+            GM_download({ url: url, name: 'test_' + Date.now() + '.txt', saveAs: true });
+            setTimeout(() => URL.revokeObjectURL(url), 3000);
+        }
 
         let timerId = null;
         document.getElementById('aice-auto').onclick = () => {
