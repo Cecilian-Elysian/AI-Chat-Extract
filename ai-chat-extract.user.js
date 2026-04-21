@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AI Chat Extract
 // @namespace    https://github.com/Cecilian-Elysian/AI-Chat-Extract
-// @version      0.0.7
+// @version      0.0.8
 // @description   定时摘取AI聊天记录并导出 (支持千问/OpenAI/Claude)
 // @author       Cecilian-Elysian
 // @match        *://*.qianwen.com/*
@@ -14,6 +14,8 @@
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_download
+// @grant        GM_notification
+// @grant        GM_addElement
 // @grant        GM_addStyle
 // @connect      api.openai.com
 // @connect      anthropic.com
@@ -464,7 +466,7 @@
                 if (this.config.exportFormat === 'md') {
                     content = Exporter.toMarkdown(sessions);
                     filename = `ai_chat_export_${Date.now()}.md`;
-                    mimeType = 'text/markdown;charset=utf-8';
+                    mimeType = 'text/plain;charset=utf-8';
                 } else if (this.config.exportFormat === 'csv') {
                     content = Exporter.toCSV(sessions);
                     filename = `ai_chat_export_${Date.now()}.csv`;
@@ -475,19 +477,17 @@
                     mimeType = 'application/json;charset=utf-8';
                 }
 
-                console.log('[AI Chat Extract] Starting download, content length:', content.length);
-
                 const blob = new Blob(["\uFEFF" + content], { type: mimeType });
+                const url = URL.createObjectURL(blob);
 
                 if (typeof GM_download !== 'undefined') {
-                    const url = URL.createObjectURL(blob);
                     GM_download({
                         url: url,
                         name: filename,
                         saveAs: true,
                         onload: () => {
-                            console.log('[AI Chat Extract] Download started');
                             URL.revokeObjectURL(url);
+                            console.log('[AI Chat Extract] Download success');
                         },
                         onerror: (e) => {
                             console.error('[AI Chat Extract] Download failed:', e);
@@ -503,7 +503,6 @@
                     a.click();
                     document.body.removeChild(a);
                     setTimeout(() => URL.revokeObjectURL(url), 1000);
-                    console.log('[AI Chat Extract] Native download triggered');
                 }
             }
 
@@ -531,6 +530,9 @@
         }
 
         showNotification(msg) {
+            if (typeof GM_notification !== 'undefined') {
+                GM_notification({ title: 'AI Chat Extract', text: msg, silent: true });
+            }
             GM_setValue('notification', { message: msg, timestamp: Date.now() });
         }
 
