@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AI Chat Extract
 // @namespace    https://github.com/Cecilian-Elysian/AI-Chat-Extract
-// @version      1.0.0
+// @version      1.0.1
 // @description   定时摘取AI聊天记录并导出
 // @author       Cecilian-Elysian
 // @match        *://*.qianwen.com/*
@@ -340,7 +340,6 @@
             </div>
             <button class="btn-primary" id="aice-run">▶ 立即导出</button>
             <button class="btn-secondary" id="aice-auto">⏰ 启动定时</button>
-            <button class="btn-secondary" id="aice-detect" style="background:#f59e0b">🔍 探测DOM</button>
             <button class="btn-primary" id="aice-auto-extract" style="background:#10b981">🚀 一键导出</button>
             <div class="status" id="aice-status">就绪</div>
         `;
@@ -380,83 +379,6 @@
             document.getElementById('aice-status').textContent = '定时中 (' + interval + 'min)';
             runOnce();
             timerId = setInterval(runOnce, interval * 60 * 1000);
-        };
-
-        const detectors = [
-            // 通用对话列表选择器
-            { name: '.conversation-item', type: 'conversation' },
-            { name: '.chat-item', type: 'conversation' },
-            { name: '.sidebar-item', type: 'conversation' },
-            { name: '[class*="conversation"]', type: 'conversation' },
-            { name: '[class*="chat-list"]', type: 'conversation' },
-            { name: '[class*="session"]', type: 'conversation' },
-            { name: 'ul li', type: 'conversation' },
-            // 消息选择器
-            { name: '.message', type: 'message' },
-            { name: '.chat-message', type: 'message' },
-            { name: '[class*="message"]', type: 'message' },
-            { name: '[class*="chat-bubble"]', type: 'message' },
-            // 内容选择器
-            { name: '.content', type: 'content' },
-            { name: '.text', type: 'content' },
-            { name: 'p', type: 'content' }
-        ];
-
-        function detectDOM() {
-            const result = { conversations: [], messages: [], raw: '' };
-            const seenConv = new Set();
-            const seenMsg = new Set();
-
-            detectors.forEach(({ name, type }) => {
-                try {
-                    const els = document.querySelectorAll(name);
-                    if (!els.length) return;
-
-                    els.forEach(el => {
-                        const text = (el.textContent || '').trim().substring(0, 100);
-                        const info = `选择器: ${name} | 类型: ${type} | 文本: ${text}`;
-
-                        if (type === 'conversation' && !seenConv.has(el)) {
-                            seenConv.add(el);
-                            result.conversations.push(info);
-                        } else if (type === 'message' && !seenMsg.has(el)) {
-                            seenMsg.add(el);
-                            result.messages.push(info);
-                        }
-                    });
-                } catch (e) {}
-            });
-
-            result.raw = `=== DOM 探测结果 ===\n\n对话列表 (${result.conversations.length}个):\n${result.conversations.slice(0, 20).join('\n')}\n\n消息 (${result.messages.length}个):\n${result.messages.slice(0, 20).join('\n')}`;
-
-            return result;
-        }
-
-        document.getElementById('aice-detect').onclick = async () => {
-            const statusEl = document.getElementById('aice-status');
-            const infoEl = document.getElementById('aice-cookie-info');
-            statusEl.textContent = '探测中...';
-            infoEl.textContent = '请稍候';
-
-            setTimeout(() => {
-                const detectResult = detectDOM();
-                const output = detectResult.raw;
-
-                let blob = new Blob([output], { type: 'text/plain' });
-                let url = URL.createObjectURL(blob);
-                let a = document.createElement('a');
-                a.href = url;
-                a.download = 'aice_detect_' + Date.now() + '.txt';
-                a.click();
-                URL.revokeObjectURL(url);
-
-                navigator.clipboard && navigator.clipboard.writeText(output).catch(() => {});
-
-                statusEl.textContent = '已保存到文件';
-                infoEl.textContent = `找到 ${detectResult.conversations.length} 个对话, ${detectResult.messages.length} 条消息`;
-
-                console.log('[AICE] 探测结果:\n' + output);
-            }, 500);
         };
 
         async function autoExtract() {
@@ -511,8 +433,7 @@
             infoEl.textContent = '开始导出...';
 
             const sessions = [];
-            const visitedUrls = new Set();
-            let currentUrl = window.location.href;
+            const visitedTitles = new Set();
 
             for (let i = 0; i < Math.min(convItems.length, 100); i++) {
                 statusEl.textContent = `导出中 ${i + 1}/${convItems.length}`;
@@ -520,7 +441,17 @@
 
                 try {
                     convItems[i].click();
-                    await new Promise(r => setTimeout(r, 1500));
+                    await new Promise(r => setTimeout(r, 1000));
+
+                    let title = document.title || '对话 ' + (i + 1);
+                    const titleEl = document.querySelector('[class*="title"]') || document.querySelector('h1');
+                    if (titleEl) title = titleEl.textContent?.trim() || title;
+
+                    if (visitedTitles.has(title)) {
+                        console.log('[AICE] Skipping duplicate:', title);
+                        continue;
+                    }
+                    visitedTitles.add(title);
 
                     let title = document.title || '对话 ' + (i + 1);
                     const titleEl = document.querySelector('[class*="title"]') || document.querySelector('h1');
