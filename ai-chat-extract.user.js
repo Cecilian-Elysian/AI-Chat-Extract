@@ -301,17 +301,6 @@
 
     function createUI() {
         GM_addStyle(`
-            .aice-toggle {
-                position: fixed; bottom: 20px; right: 20px; width: 50px; height: 50px;
-                background: linear-gradient(135deg, #667eea, #764ba2); color: #fff;
-                border: none; border-radius: 50%; cursor: pointer; z-index: 99998;
-                font-size: 20px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-                transition: transform 0.2s, box-shadow 0.2s;
-            }
-            .aice-toggle:hover {
-                transform: scale(1.1);
-                box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
-            }
             .aice-overlay {
                 position: fixed; top: 0; left: 0; width: 100%; height: 100%;
                 background: rgba(0,0,0,0.5); z-index: 99997; opacity: 0;
@@ -421,12 +410,6 @@
         `;
         document.body.appendChild(panel);
 
-        const toggleBtn = document.createElement('button');
-        toggleBtn.className = 'aice-toggle';
-        toggleBtn.textContent = '📥';
-        toggleBtn.title = 'AI Chat Extract';
-        document.body.appendChild(toggleBtn);
-
         function openPanel() {
             panel.classList.add('open');
             overlay.classList.add('active');
@@ -459,6 +442,7 @@
         miniballMenu.className = 'aice-miniball-menu';
         miniballMenu.innerHTML = `
             <item data-action="export"><span class="icon">📤</span>立即导出</item>
+            <item data-action="autoextract"><span class="icon">🚀</span>一键导出</item>
             <item data-action="auto"><span class="icon">⏰</span>定时导出</item>
             <item data-action="cookie"><span class="icon">🍪</span>获取Cookie</item>
             <div class="divider"></div>
@@ -536,6 +520,8 @@
                     openPanel();
                 } else if (action === 'export') {
                     document.getElementById('aice-run').click();
+                } else if (action === 'autoextract') {
+                    document.getElementById('aice-auto-extract').click();
                 } else if (action === 'auto') {
                     document.getElementById('aice-auto').click();
                 } else if (action === 'cookie') {
